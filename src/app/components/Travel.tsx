@@ -118,7 +118,6 @@ export const Travel = () => {
     [formData] // Dependency array for the hook.
   );
 
-
   useMakeCopilotReadable("This is the source destination , dates of travel and all details as submitted by User: " + JSON.stringify(formData));
 
   const context = useCopilotContext();
@@ -205,10 +204,15 @@ export const Travel = () => {
     const onFinish = async (values: any) => {
       console.log('Received values of form: ', values, context);
       setFormData(values);
-      // setGenerateItinerayTaskRunning(true);
-      await generateItinerary.run(context, values);
-      // setGenerateItinerayTaskRunning(false);
-   
+      setGenerateItinerayTaskRunning(true);
+      try {
+        await generateItinerary.run(context, values);
+    } catch (error) {
+        console.error('Error running generateItinerary:', error);
+    } finally {
+        setGenerateItinerayTaskRunning(false);
+        console.log('GenerateItinerary task completed for form: ', values, context);
+    }
     };
     return (
       <Card>
@@ -226,6 +230,7 @@ export const Travel = () => {
         </Flex>
         <Divider className="divider-style" />
         <Card title="Please Enter the required details" hoverable className="card-input-style">
+        <Spin tip="Generating Itineray..."  size="large" spinning={generateItinerayTaskRunning} style={{color:'black', top: '15px'}}>
         <Form
           form={form}
           layout="inline"
@@ -265,6 +270,7 @@ export const Travel = () => {
             </Button>
           </Form.Item>
         </Form>
+        </Spin>
         </Card>
         </Card>
     );
@@ -283,7 +289,6 @@ export const Travel = () => {
     width: 273,
   };
   return (
-    <Spin tip="Generating Itineray..." spinning={generateItinerayTaskRunning}>
       <div className="background">
         {
           isEmpty(itinerary) &&
@@ -342,9 +347,6 @@ export const Travel = () => {
         {!isEmpty(itinerary) && (
           <Itineray itinerary={itinerary} resetState={resetState} />
         )}
-
       </div>
-    </Spin>
   );
-
 };
