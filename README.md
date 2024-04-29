@@ -1,6 +1,9 @@
 # Travel Co-Pilot
 This project is built using [Next.js](https://nextjs.org/), bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+<img width="1275" alt="Screenshot 2024-04-30 at 2 11 37 AM" src="https://github.com/sushantrana-dev/TRAVEL-CO-PILOT/assets/168199532/5da7f897-8f9d-4383-93ae-cf388acd06a0">
+
+
 ## Getting Started
 
 ### Prerequisites
