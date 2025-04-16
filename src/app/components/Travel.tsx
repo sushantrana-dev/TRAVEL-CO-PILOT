@@ -12,9 +12,12 @@ const { Title,Link } = Typography;
 import type { GetProps } from 'antd';
 import dayjs from 'dayjs';
 const { RangePicker } = DatePicker;
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import isEmpty from "lodash/isEmpty";
 import { Itineray } from "./ItinerayList";
+import { useToast } from "./ToastContext";
+import initErrorInterceptor from "./interceptErrorsMiddleware";
+
 export const ActionButton = ({
   disabled, onClick, className, children,
 }: {
@@ -35,14 +38,108 @@ export const ActionButton = ({
     </button>
   );
 };
+
 import { weatherOptions } from "./constants";
 import Image from "next/image";
-// Define the Travel component as a functional component.
-export const Travel = () => {
 
+export const Travel = ({ apiKey }: { apiKey: string }) => {
   const [formData, setFormData] = useState({});
-  const [itinerary, setItinerary] = useState({});
+  const [itinerary, setItinerary] = useState<any>({});
   const [generateItinerayTaskRunning, setGenerateItinerayTaskRunning] = useState(false);
+  const { showToast } = useToast();
+  
+  // Add Error handler for CopilotKit responses
+  const handleCopilotError = useCallback((error: any) => {
+    console.error('CopilotKit error:', error, typeof error);
+    
+    // Parse the error to extract meaningful information
+    if (error?.code === 'invalid_api_key' || (error?.status === 401)|| error?.message?.includes("No function call occurred")) {
+      // Authentication error
+      showToast(
+        'error',
+        'API Key Error',
+        error?.message || 'Your OpenAI API key appears to be invalid or has insufficient permissions. Please check and try again.'
+      );
+      
+      // Set the API key error flag before removing the key
+      localStorage.setItem('api_key_error', 'true');
+      
+      // Reset the API key in localStorage to force re-authentication
+      localStorage.removeItem('openai_api_key');
+      
+      // Force reload after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+      
+    } else if (error?.code === 'rate_limit_exceeded' || error?.status === 429) {
+      // Rate limit error
+      showToast(
+        'warning',
+        'Rate Limit Exceeded',
+        error?.message || 'You have reached the rate limit for the OpenAI API. Please try again later.'
+      );
+    } else if (error?.message) {
+      // Generic error with message
+      showToast(
+        'error',
+        'AI Service Error',
+        error.message || 'An error occurred while processing your request'
+      );
+    } else if (error?.error) {
+      // Error has an 'error' field which might be a string or contain a message
+      const errorMsg = typeof error.error === 'string' ? error.error : error.error.message || 'Unknown error';
+      showToast(
+        'error',
+        'Something went wrong',
+        errorMsg
+      );
+    } else {
+      // Generic error without message
+      showToast(
+        'error',
+        'Connection Error',
+        'Failed to communicate with the AI service. Please check your internet connection and try again.'
+      );
+    }
+  }, [showToast]);
+  
+  // Initialize the API error interceptor
+  useEffect(() => {
+    initErrorInterceptor();
+    
+    // Set up event listener for API errors
+    const handleApiError = (event: CustomEvent<any>) => {
+      console.log('API error event received:', event.detail);
+      if (event.detail && event.detail.error) {
+        handleCopilotError(event.detail.error);
+      } else {
+        console.error('Received malformed error event:', event);
+        showToast(
+          'error',
+          'Unexpected Error',
+          'An unexpected error occurred with the AI service'
+        );
+      }
+    };
+    
+    // Add the event listener with the proper type
+    window.addEventListener('copilotkit-api-error', handleApiError as EventListener);
+    
+    return () => {
+      window.removeEventListener('copilotkit-api-error', handleApiError as EventListener);
+    };
+  }, [handleCopilotError, showToast]);
+  
+  // Add the API key to the formData and ensure it's stored in localStorage
+  useEffect(() => {
+    if (apiKey) {
+      setFormData(prev => ({ ...prev, apiKey }));
+      // Store in localStorage for persistence
+      localStorage.setItem('openai_api_key', apiKey);
+    }
+  }, [apiKey]);
+
   useMakeCopilotActionable(
     {
       name: "generateItinerary",
@@ -121,6 +218,7 @@ export const Travel = () => {
   useMakeCopilotReadable("This is the source destination , dates of travel and all details as submitted by User: " + JSON.stringify(formData));
 
   const context = useCopilotContext();
+  
   const generateItinerary = new CopilotTask({
     includeCopilotActionable: true,
     instructions: "Generate a travel itinerary Itineray based on the source, destination, and travel dates provided by the user.",
@@ -203,16 +301,26 @@ export const Travel = () => {
 
     const onFinish = async (values: any) => {
       console.log('Received values of form: ', values, context);
-      setFormData(values);
+      
+      // Make sure to include the API key in form data
+      const formDataWithApiKey = {
+        ...values,
+        apiKey // Include the API key from props
+      };
+      
+      setFormData(formDataWithApiKey);
       setGenerateItinerayTaskRunning(true);
+      
       try {
-        await generateItinerary.run(context, values);
-    } catch (error) {
+        await generateItinerary.run(context, formDataWithApiKey);
+        showToast('success', 'Itinerary Generated', 'Your travel itinerary has been successfully created!');
+      } catch (error) {
         console.error('Error running generateItinerary:', error);
-    } finally {
+        handleCopilotError(error);
+      } finally {
         setGenerateItinerayTaskRunning(false);
-        console.log('GenerateItinerary task completed for form: ', values, context);
-    }
+        console.log('GenerateItinerary task completed');
+      }
     };
     return (
       <Card>

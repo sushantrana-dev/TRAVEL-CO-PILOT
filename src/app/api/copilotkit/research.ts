@@ -20,6 +20,7 @@ function model() {
   return new ChatOpenAI({
     temperature: 0,
     modelName: "gpt-4-1106-preview",
+    openAIApiKey: process.env.OPENAI_API_KEY, // Use the environment variable set in route.ts
   });
 }
 
@@ -242,6 +243,6 @@ export async function researchWithLangGraph(topic: string) {
   };
   const result = await app.invoke(inputs);
   const regex = /<FEEDBACK>[\s\S]*?<\/FEEDBACK>/g;
-  const article = result.agentState.article.replace(regex, "");
+  const article = result.agentState.article?.replace(regex, "") || "";
   return article;
 }

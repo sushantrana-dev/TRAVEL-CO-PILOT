@@ -6,13 +6,15 @@ import { findFlagUrlByCountryName } from 'country-flags-svg';
 import styled from 'styled-components';
 import './style.scss';
 import jsPDF from "jspdf";
-import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+// Don't import Leaflet or react-leaflet at the top level
+// import 'leaflet/dist/leaflet.css';
+// import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import Meta from "antd/es/card/Meta";
 import ReactAnimatedWeather from 'react-animated-weather';
 import { defaults } from './constants';
 import html2canvas from 'html2canvas';
+import dynamic from 'next/dynamic';
+
 // Styled components
 const ItineraryContainer = styled.div`
   background-color: #f4f4f9;
@@ -35,32 +37,26 @@ const ItineraryDates = styled.h2`
   margin-bottom: 10px;
 `;
 
-
-
-// Fix missing marker issue in Leaflet 1.7.x
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+// Dynamically import the MapView component with SSR disabled
+const MapViewDynamic = dynamic(() => import('./MapView'), {
+  ssr: false,
+  loading: () => (
+    <div style={{ 
+      height: '50vh', 
+      width: '100%', 
+      marginBottom: '30px', 
+      background: '#f0f0f0', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center' 
+    }}>
+      Loading map...
+    </div>
+  ),
 });
 
-const MapView = () => {
-  const position = [28.7041, 77.1025];
-
-  return (
-    <MapContainer center={position} zoom={13} style={{ height: '50vh', width: '100%', marginBottom: '30px' }}>
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <Marker position={position}>
-      </Marker>
-    </MapContainer>
-  );
-};
-
-
-
+// Placeholder for the original MapView component
+const MapView = () => <MapViewDynamic />;
 
 interface DayWisePlanListProps {
   dayWisePlan: string;
@@ -189,22 +185,31 @@ export interface ItinerayProps {
 
 // Define a functional component named Itineray that accepts props of type ItinerayProps.
 export const Itineray = (props: ItinerayProps) => {
-  const printRef = React.useRef();
+  const printRef = React.useRef<HTMLDivElement>(null);
 
   //fxn to handle download pdf flwow
   const handleDownloadPdf = async () => {
     const element = printRef.current;
-    const canvas = await html2canvas(element, { scale: 2 });
-    const data = canvas.toDataURL('image/png');
-    console.log('canvass', canvas.width, canvas.height);
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "px",
-      format: [canvas?.width, canvas?.height]
-    });
+    if (!element) {
+      console.error("Print element not found");
+      return;
+    }
+    
+    try {
+      const canvas = await html2canvas(element, { scale: 2 });
+      const data = canvas.toDataURL('image/png');
+      console.log('canvas', canvas.width, canvas.height);
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [canvas?.width, canvas?.height]
+      });
 
-    pdf.addImage(data, 'PNG', 0, 0, canvas.width, canvas.height);
-    pdf.save("travelItineray.pdf");
+      pdf.addImage(data, 'PNG', 0, 0, canvas.width, canvas.height);
+      pdf.save("travelItineray.pdf");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
   };
 
   const { itinerary, resetState } = props;
