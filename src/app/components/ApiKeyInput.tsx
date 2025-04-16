@@ -19,6 +19,8 @@ const ApiKeyInput = ({ onApiKeySubmit, isLoading = false }: ApiKeyInputProps) =>
   // Check if API key was reset due to an error
   useEffect(() => {
     const apiKeyError = localStorage.getItem('api_key_error');
+    const apiKeyErrorMessage = localStorage.getItem('api_key_error_message');
+    
     if (apiKeyError) {
       // Clear the flag
       localStorage.removeItem('api_key_error');
@@ -28,8 +30,13 @@ const ApiKeyInput = ({ onApiKeySubmit, isLoading = false }: ApiKeyInputProps) =>
       showToast(
         'error',
         'API Key Invalid',
-        'Your previous API key was rejected by OpenAI. Please provide a valid API key.'
+        apiKeyErrorMessage || 'Your previous API key was rejected by OpenAI. Please provide a valid API key.'
       );
+      
+      // Also clear the error message
+      if (apiKeyErrorMessage) {
+        localStorage.removeItem('api_key_error_message');
+      }
     }
   }, [showToast]);
 
@@ -42,8 +49,8 @@ const ApiKeyInput = ({ onApiKeySubmit, isLoading = false }: ApiKeyInputProps) =>
     }
     
     // Check minimum length
-    if (key.length < 40) {
-      setValidationError('API key is too short. OpenAI API keys are typically at least 40 characters long');
+    if (key.length < 30) {
+      setValidationError('API key is too short. OpenAI API keys are typically at least 30 characters long');
       showToast('error', 'Invalid API Key', 'Your API key appears to be too short');
       return false;
     }
@@ -109,7 +116,12 @@ const ApiKeyInput = ({ onApiKeySubmit, isLoading = false }: ApiKeyInputProps) =>
           type="error"
           showIcon
           message="Previous API Key Rejected"
-          description="Your previous API key was rejected by OpenAI. Please provide a valid API key from your OpenAI account."
+          description={
+            <>
+              <p>Your previous API key was rejected by OpenAI. Please provide a valid API key from your OpenAI account.</p>
+              <p><strong>Note:</strong> If you're seeing a "No function call occurred" error, this typically indicates that your API key doesn't have permission to use the necessary AI models. Please make sure your API key has access to GPT-4 or GPT-3.5.</p>
+            </>
+          }
           style={{ marginBottom: '20px' }}
         />
       )}

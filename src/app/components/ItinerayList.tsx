@@ -6,9 +6,7 @@ import { findFlagUrlByCountryName } from 'country-flags-svg';
 import styled from 'styled-components';
 import './style.scss';
 import jsPDF from "jspdf";
-// Don't import Leaflet or react-leaflet at the top level
-// import 'leaflet/dist/leaflet.css';
-// import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+// Remove all Leaflet imports
 import Meta from "antd/es/card/Meta";
 import ReactAnimatedWeather from 'react-animated-weather';
 import { defaults } from './constants';
@@ -37,26 +35,7 @@ const ItineraryDates = styled.h2`
   margin-bottom: 10px;
 `;
 
-// Dynamically import the MapView component with SSR disabled
-const MapViewDynamic = dynamic(() => import('./MapView'), {
-  ssr: false,
-  loading: () => (
-    <div style={{ 
-      height: '50vh', 
-      width: '100%', 
-      marginBottom: '30px', 
-      background: '#f0f0f0', 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center' 
-    }}>
-      Loading map...
-    </div>
-  ),
-});
-
 // Placeholder for the original MapView component
-const MapView = () => <MapViewDynamic />;
 
 interface DayWisePlanListProps {
   dayWisePlan: string;
@@ -270,11 +249,8 @@ export const Itineray = (props: ItinerayProps) => {
             </div></Tooltip>, children: <DayWisePlanList dayWisePlan={itinerary?.dayWisePlan} />
           }]}
         />
-        <Alert showIcon type="info" message="Please note that the above plan is tentative and is AI generated.So it may change based on the actual conditions." />
+        <Alert showIcon type="info" message="Please note that the above plan is tentative and is AI generated. So it may change based on the actual conditions." />
       </ItineraryContainer>
-      <Card style={{ margin: '20px' }}>
-        <Tooltip title="A placeholder till the rest of the features gets added 😉" >Interactive World Map at your sevice :</Tooltip> <MapView />
-      </Card>
     </>
   );
 };

@@ -52,8 +52,31 @@ export const Travel = ({ apiKey }: { apiKey: string }) => {
   const handleCopilotError = useCallback((error: any) => {
     console.error('CopilotKit error:', error, typeof error);
     
+    // Specific handling for the "No function call occurred" error
+    if (error?.message?.includes("No function call occurred")) {
+      // This specific error indicates an issue with API authentication
+      showToast(
+        'error',
+        'OpenAI API Error',
+        'The AI service could not process your request. This is likely due to an invalid API key. Please check your API key and try again.'
+      );
+      
+      // Set the API key error flag before removing the key
+      localStorage.setItem('api_key_error', 'true');
+      localStorage.setItem('api_key_error_message', 'Your API key was rejected by OpenAI with error: No function call occurred');
+      
+      // Reset the API key in localStorage to force re-authentication
+      localStorage.removeItem('openai_api_key');
+      
+      // Force reload after a short delay to allow user to read the toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 3000);
+      return;
+    }
+    
     // Parse the error to extract meaningful information
-    if (error?.code === 'invalid_api_key' || (error?.status === 401)|| error?.message?.includes("No function call occurred")) {
+    if (error?.code === 'invalid_api_key' || (error?.status === 401)) {
       // Authentication error
       showToast(
         'error',
